@@ -10,7 +10,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 
 # Image 
-IMG_SIZE = 224
+IMG_SIZE = 448
 IMG_CHANNELS = 3
 
 # Data num

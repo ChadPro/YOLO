@@ -66,7 +66,7 @@ def yolo_base_net(inputs, num_classes):
     conv_num = conv_num + 1
     net, w22, b22 = conv_block(net, [3,3,1024,1024], [1,2,2,1], "conv"+str(conv_num))
     
-    net = max_pool_block(net, [1,7,7,1], [1,7,7,2], "avg_pool")
+    net = max_pool_block(net, [1,7,7,1], [1,7,7,1], "avg_pool")
 
     pool_shape = net.get_shape().as_list()
     nodes = pool_shape[1]*pool_shape[2]*pool_shape[3]
@@ -77,7 +77,7 @@ def yolo_base_net(inputs, num_classes):
         fc1_biase = tf.get_variable('biase', [num_classes], initializer=tf.constant_initializer(STDDEV))
         fc1 = tf.matmul(reshaped, fc1_weights) + fc1_biase
 
-    return fc1
+    return net
 
 def avg_pool_block(inputs, p_size, strides, scope_name):
     with tf.name_scope(scope_name):

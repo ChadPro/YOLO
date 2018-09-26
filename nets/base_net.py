@@ -77,7 +77,7 @@ def yolo_base_net(inputs, num_classes):
         fc1_biase = tf.get_variable('biase', [num_classes], initializer=tf.constant_initializer(STDDEV))
         fc1 = tf.matmul(reshaped, fc1_weights) + fc1_biase
 
-    return net
+    return fc1
 
 def avg_pool_block(inputs, p_size, strides, scope_name):
     with tf.name_scope(scope_name):
@@ -86,14 +86,14 @@ def avg_pool_block(inputs, p_size, strides, scope_name):
 
 def max_pool_block(inputs, p_size, strides, scope_name):
     with tf.name_scope(scope_name):
-        ouput = tf.nn.max_pool(inputs, p_size, strides, padding='SAME', name="max_pool")
-    return ouput
+        output = tf.nn.max_pool(inputs, p_size, strides, padding='SAME', name="max_pool")
+    return output
 
 def conv_block(inputs, w_size, strides, scope_name):
     with tf.variable_scope(scope_name):
         weights = tf.get_variable("dw", w_size, initializer=tf.truncated_normal_initializer(STDDEV))
         biases = tf.get_variable("biases", w_size[-1], initializer=tf.constant_initializer(0.))
         layer = tf.nn.conv2d(inputs, weights, strides=strides, padding='SAME')
-        ouput = ACTIVATION(tf.nn.bias_add(layer, biases))
-    return ouput, weights, biases
+        output = ACTIVATION(tf.nn.bias_add(layer, biases))
+    return output, weights, biases
 

@@ -68,9 +68,9 @@ def train():
      #4. Back propagation
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate_base ,global_step, FLAGS.learning_decay_step, FLAGS.learning_rate_decay)  
     # train_step 梯度下降(学习率，损失函数，全局步数) + BN Layer Params update op
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step) 
+    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    # with tf.control_dependencies(update_ops):
+    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step) 
 
     #5. Calculate val accuracy
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))

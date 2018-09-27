@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 
 from datasets import imagenet_300
+from datasets import imagenet_224
 from datasets import data_imagenet
 from datasets import flowers17_448
 from datasets import cifar10_224
@@ -11,7 +12,7 @@ from datasets import cifar100_224
 
 datasets_map = {
     'imagenet_300' : imagenet_300,
-    'imagenet_224' : data_imagenet,
+    'imagenet_224' : imagenet_224,
     'flowers17_448' : flowers17_448,
     'cifar10_224' : cifar10_224,
     'cifar100_224' : cifar100_224

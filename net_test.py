@@ -9,12 +9,20 @@ from nets import base_net
 
 yolo_base = base_net.YOLO_Base()
 
-img = tf.ones([32,448,448,3])
+label = tf.constant([[0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.5, 0., 0., 0.]])
+label2 = tf.constant([[1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]])
 
-net = yolo_base.base_net(img, 1000)
+img = tf.ones([1,448,448,3])
+
+net = yolo_base.base_net(img, 17)
+
+ss = tf.nn.softmax(net)
+
+cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=label2,logits=label2)
 
 with tf.Session() as sess:
     init_op = tf.global_variables_initializer()
     sess.run(init_op)
-    result = sess.run(net)
-    print result.shape
+    result, out = sess.run([ss, net])
+    print out
+    print result

@@ -4,10 +4,11 @@ from __future__ import absolute_import
 from __future__ import division
 
 from nets import base_net
-
+from nets import base_net_bn
 
 net_map = {
-    'base_net' : base_net
+    'base_net' : base_net,
+    'base_net_bn' : base_net_bn
     }
 
 

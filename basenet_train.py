@@ -21,20 +21,20 @@ tf.app.flags.DEFINE_float('learning_rate_base', 0.01, 'Initial learning rate.')
 tf.app.flags.DEFINE_float('learning_rate_decay', 0.99, 'Decay learning rate.')
 tf.app.flags.DEFINE_integer('learning_decay_step', 500, 'Learning rate decay step.')
 tf.app.flags.DEFINE_integer('total_steps', 300000, 'Train total steps.')
-tf.app.flags.DEFINE_float('gpu_fraction', 0.7, 'How to use gpu.')
+tf.app.flags.DEFINE_float('gpu_fraction', 0.9, 'How to use gpu.')
 tf.app.flags.DEFINE_string('train_model_dir', './base_model/basemodel.ckpt', 'Directory where checkpoints are written to.')
 tf.app.flags.DEFINE_string('log_dir', './log_dir/basenet', 'Log file saved.')
 
 tf.app.flags.DEFINE_string('train_data_path','', 'Dataset for train.')
 tf.app.flags.DEFINE_string('val_data_path', '', 'Dataset for val.')
 
-tf.app.flags.DEFINE_string('dataset', 'flowers17_448', 'Chose dataset in dataset_factory.')
+tf.app.flags.DEFINE_string('dataset', 'imagenet_224', 'Chose dataset in dataset_factory.')
 tf.app.flags.DEFINE_bool('white_bal',False, 'If white balance.')
-tf.app.flags.DEFINE_integer('image_size', 448, 'Default image size.')
-tf.app.flags.DEFINE_integer('batch_size', 64, 'Default batch_size 64.')
-tf.app.flags.DEFINE_integer('num_classes', 17, 'Number of classes to use in the dataset.')
+tf.app.flags.DEFINE_integer('image_size', 224, 'Default image size.')
+tf.app.flags.DEFINE_integer('batch_size', 32, 'Default batch_size 64.')
+tf.app.flags.DEFINE_integer('num_classes', 1000, 'Number of classes to use in the dataset.')
 
-tf.app.flags.DEFINE_string('net_chose','base_net', 'Use to chose net.')
+tf.app.flags.DEFINE_string('net_chose','base_net_bn', 'Use to chose net.')
 tf.app.flags.DEFINE_bool('fine_tune', False, 'Is fine_tune work.')
 tf.app.flags.DEFINE_string('restore_model_dir', '', 'Restore model.')
 FLAGS = tf.app.flags.FLAGS
@@ -68,9 +68,9 @@ def train():
      #4. Back propagation
     learning_rate = tf.train.exponential_decay(FLAGS.learning_rate_base ,global_step, FLAGS.learning_decay_step, FLAGS.learning_rate_decay)  
     # train_step 梯度下降(学习率，损失函数，全局步数) + BN Layer Params update op
-    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    # with tf.control_dependencies(update_ops):
-    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step) 
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step) 
 
     #5. Calculate val accuracy
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
@@ -116,8 +116,6 @@ def train():
                 
                 summary_str, result, outy, outy_ = sess.run([merged, accuracy, y, y_], feed_dict={x:X_input_val, y_:Y_input_val, isTrainNow:False})
                 writer.add_summary(summary_str, i)
-                acc = result*100.0
-                accStr = str(acc) + "%"
                 acc_top1 = vgg_acc.acc_top1(outy, outy_)
                 acc_top5 = vgg_acc.acc_top5(outy, outy_)
                 run_time = time.time() - startTime
@@ -126,12 +124,9 @@ def train():
                 print("############ step : %d ################"%step)
                 print("   learning_rate = %g                    "%learn_rate_now)
                 print("   lose(batch)   = %g                    "%loss_value)
-                print("   accuracy      = " + accStr)
                 print("   acc_top1      = " + acc_top1)
                 print("   acc_top5      = " + acc_top5)
                 print("   train run     = %d min"%run_time)
-                #print" output : ", outy[0:10]
-                #print" label : ", outy_[0:10]
                 print(" ")
                 print(" ")
 

@@ -11,10 +11,10 @@ from preprocessing import yolo_preprocessing
 from datasets import pascalvoc_2012 
 
 # 0. Data for Test
-test_image = tf.ones([16,448,448,3])
-test_boxes = tf.zeros([16,7,7,1,4])
-test_labels = tf.zeros([16,7,7,1],dtype=tf.int64)
-test_scores = tf.zeros([16,7,7,1])
+# test_image = tf.ones([16,448,448,3])
+# test_boxes = tf.zeros([16,7,7,1,4])
+# test_labels = tf.zeros([16,7,7,1],dtype=tf.int64)
+# test_scores = tf.zeros([16,7,7,1])
 
 # 1. Create yolo object
 yolo_base = base_net.YOLO_Base()
@@ -24,7 +24,7 @@ yolo_obj = yolo_net.YOLO()
 image, shape, box, label = pascalvoc_2012.inputs("../dataset/VOCdevkit/pascal_voc21/", "", "Train", 16, None)
 bimage, blabel, bbox = yolo_preprocessing.preprocess_for_train(image, label, box, (448,448))
 blabels, bboxes, bscores = yolo_obj.encode_boxes(bbox, blabel)
-imagess, boxess, labelss, scoress = tf.train.shuffle_batch([bimage,bboxes,blabels,bscores], batch_size=3, num_threads=64, capacity=5000, min_after_dequeue=3000)
+imagess, boxess, labelss, scoress = tf.train.shuffle_batch([bimage,bboxes,blabels,bscores], batch_size=16, num_threads=64, capacity=5000, min_after_dequeue=3000)
 
 # 3. Inference
 y = yolo_obj.yolo_net(imagess, 21)

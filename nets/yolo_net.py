@@ -175,19 +175,19 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
         class_delta = input_response * (predict_classes - input_classes)
         class_loss = tf.reduce_mean(
             tf.reduce_sum(tf.square(class_delta), axis=[1,2,3]),
-            name='class_loss') * 0.3
+            name='class_loss') * 2.0
         
         # object_loss
         object_delta = object_mask * (predict_scales - iou_predict_truth)
         object_loss = tf.reduce_mean(
             tf.reduce_sum(tf.square(object_delta), axis=[1,2,3]),
-            name='object_loss') * 0.2
+            name='object_loss') * 1.0
 
         # noobject_loss
         noobject_delta = noobject_mask * predict_scales
         noobject_loss = tf.reduce_mean(
             tf.reduce_sum(tf.square(noobject_delta), axis=[1,2,3]),
-            name='noobject_loss') * 0.2
+            name='noobject_loss') * 1.0
 
         # coord_loss
         boxes_tran = tf.stack(
@@ -199,7 +199,7 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
         boxes_delta = coord_mask * (predict_boxes - boxes_tran)
         coord_loss = tf.reduce_mean(
             tf.reduce_sum(tf.square(boxes_delta), axis=[1,2,3,4]),
-            name='coord_loss') * 0.3
+            name='coord_loss') * 5.0
 
         tf.losses.add_loss(class_loss)
         tf.losses.add_loss(object_loss)

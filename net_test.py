@@ -18,7 +18,7 @@ yolo_obj = yolo_net.YOLO()
 
 blabels, bboxes, bscores = yolo_obj.encode_boxes(bbox, blabel)
 
-imagess, boxess, labelss, scoress = tf.train.shuffle_batch([bimage,bboxes,blabels,bscores], batch_size=3, num_threads=64, capacity=500, min_after_dequeue=3000)
+imagess, boxess, labelss, scoress = tf.train.shuffle_batch([bimage,bboxes,blabels,bscores], batch_size=3, num_threads=64, capacity=5000, min_after_dequeue=3000)
 
 # net = yolo_obj.yolo_net(img, 21)
 # output = yolo_obj.net_loss(net, None, 16)

@@ -65,7 +65,7 @@ def read_and_decode(filename_queue):
                         keys_to_features['image/object/bbox/xmax'])
     label = keys_to_features['image/object/bbox/label']
 
-    return image, shape, boxes, label.valuse
+    return image, shape, boxes, label.values
 
 def inputs(train_path, val_path, data_set,batch_size,num_epochs):
     data_file_num = 0

@@ -101,23 +101,24 @@ def get_yolo_net(inputs, num_classes, is_training=True):
 
 
 
-# def get_layer_loss(predicts, labels, boxes, batch_size, scope="net_loss"):
+def get_layer_loss(predicts, labels, boxes, batch_size, scope="net_loss"):
+
+    with tf.name_scope(scope):
+        reshaped = tf.reshape(predicts, [batch_size,7,7,31])
+
+        
+    
+
+
+# def get_layer_loss(predicts, batch_size, scope="net_loss"):
 
 #     with tf.name_scope(scope):
 #         predict_classes = tf.reshape(predicts[:, :7*7*21], [batch_size, 7, 7, 21])
 #         predict_score = tf.reshape(predicts[:, 7*7*21:7*7*23], [batch_size, 7, 7, 2])
 #         predict_boxes = tf.reshape(predicts[:, 7*7*23:], [batch_size, 7, 7, 2, 4])
-    
 
-def get_layer_loss(predicts, batch_size, scope="net_loss"):
-
-    with tf.name_scope(scope):
-        predict_classes = tf.reshape(predicts[:, :7*7*21], [batch_size, 7, 7, 21])
-        predict_score = tf.reshape(predicts[:, 7*7*21:7*7*23], [batch_size, 7, 7, 2])
-        predict_boxes = tf.reshape(predicts[:, 7*7*23:], [batch_size, 7, 7, 2, 4])
-
-        reshaped = tf.reshape(predicts, [batch_size,7,7,31])
-    return reshaped
+#         reshaped = tf.reshape(predicts, [batch_size,7,7,31])
+#     return reshaped
 
 def fc_block(inputs, num_out, id, scope_name, activation=None, is_training=True):
     num_in = inputs.get_shape().as_list()[-1]

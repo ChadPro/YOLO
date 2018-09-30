@@ -86,9 +86,4 @@ def inputs(train_path, val_path, data_set,batch_size,num_epochs):
         filename_queue = tf.train.string_input_producer(file_lists, num_epochs=num_epochs)
         image, shape, boxes, label = read_and_decode(filename_queue)
 
-        labels_expand = tf.expand_dims(label, 1)
-        indices = tf.expand_dims(tf.range(0, label.shape[0], 1), 1)
-        concated = tf.concat([indices, labels_expand], 1)
-        onehot_labels = tf.sparse_to_dense(concated, tf.stack([label.shape[0],21]), 1.0, 0.0)
-
-    return image, shape, boxes, onehot_labels
+    return image, shape, boxes, label

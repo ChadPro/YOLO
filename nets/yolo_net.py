@@ -23,8 +23,8 @@ class YOLO(object):
     def yolo_net(self, inputs, num_classes, is_training=True):
         return get_yolo_net(inputs, num_classes)
 
-    def net_loss(self, predicts, labels, batch_size, scope="net_loss"):
-        return get_layer_loss(predicts, batch_size, scope=scope)
+    def net_loss(self, predicts, labels, boxes, scores, batch_size, scope="net_loss"):
+        return get_layer_loss(predicts, labels, boxes, scores, batch_size, scope=scope)
 
     def detect_anchors(self, image_shape, step, anchor_size=7, offset=0.5, dtype=np.float32):
         y, x = np.mgrid[0:anchor_size, 0:anchor_size]
@@ -99,17 +99,120 @@ def get_yolo_net(inputs, num_classes, is_training=True):
 
     return output_layer
 
+def calc_iou(boxes1, boxes2, scope='iou'):
+        """calculate ious
+        Args:
+          boxes1: 5-D tensor [BATCH_SIZE, CELL_SIZE, CELL_SIZE, BOXES_PER_CELL, 4]  ====> (x_center, y_center, w, h)
+          boxes2: 5-D tensor [BATCH_SIZE, CELL_SIZE, CELL_SIZE, BOXES_PER_CELL, 4] ===> (x_center, y_center, w, h)
+        Return:
+          iou: 4-D tensor [BATCH_SIZE, CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
+        """
+        with tf.variable_scope(scope):
+            # transform (x_center, y_center, w, h) to (x1, y1, x2, y2)
+            boxes1_t = tf.stack([boxes1[..., 0] - boxes1[..., 2] / 2.0,
+                                 boxes1[..., 1] - boxes1[..., 3] / 2.0,
+                                 boxes1[..., 0] + boxes1[..., 2] / 2.0,
+                                 boxes1[..., 1] + boxes1[..., 3] / 2.0],
+                                axis=-1)
 
+            boxes2_t = tf.stack([boxes2[..., 0] - boxes2[..., 2] / 2.0,
+                                 boxes2[..., 1] - boxes2[..., 3] / 2.0,
+                                 boxes2[..., 0] + boxes2[..., 2] / 2.0,
+                                 boxes2[..., 1] + boxes2[..., 3] / 2.0],
+                                axis=-1)
 
-def get_layer_loss(predicts, labels, boxes, batch_size, scope="net_loss"):
+            # calculate the left up point & right down point
+            lu = tf.maximum(boxes1_t[..., :2], boxes2_t[..., :2])
+            rd = tf.minimum(boxes1_t[..., 2:], boxes2_t[..., 2:])
+
+            # intersection
+            intersection = tf.maximum(0.0, rd - lu)
+            inter_square = intersection[..., 0] * intersection[..., 1]
+
+            # calculate the boxs1 square and boxs2 square
+            square1 = boxes1[..., 2] * boxes1[..., 3]
+            square2 = boxes2[..., 2] * boxes2[..., 3]
+
+            union_square = tf.maximum(square1 + square2 - inter_square, 1e-10)
+
+        return tf.clip_by_value(inter_square / union_square, 0.0, 1.0)
+
+def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"):
 
     with tf.name_scope(scope):
-        reshaped = tf.reshape(predicts, [batch_size,7,7,31])
+        pre_reshaped = tf.reshape(predicts, [batch_size,7,7,31])
+        predict_classes = pre_reshaped[:,:,:,:21]
+        predict_boxes = pre_reshaped[:,:,:,21:29]
+        predict_boxes = tf.reshape(predict_boxes, [batch_size,7,7,2,4])
+        predict_scales = pre_reshaped[:,:,:,29:]
 
+        input_classes = tf.reshape(tf.one_hot(labels,21,axis=3), (batch_size,7,7,21))
+        input_boxes = tf.tile(boxes, [1,1,1,2,1])
+        input_response = scores
+
+        anchor_offset = np.transpose(np.reshape(np.array([np.arange(7)]*7*2), (2,7,7)), (1,2,0))
+        anchor_offset = tf.reshape(tf.constant(anchor_offset, dtype=tf.float32), [1,7,7,2])
+        anchor_offset = tf.tile(anchor_offset, [batch_size, 1,1,1])
+        anchor_offset_tran = tf.transpose(anchor_offset, (0,2,1,3))
+
+        predict_boxes_tran = tf.stack(
+            [(predict_boxes[..., 0] + anchor_offset) / 7,
+            (predict_boxes[..., 1] + anchor_offset_tran) / 7,
+            tf.square(predict_boxes[...,2]),
+            tf.square(predict_boxes[...,3])], axis=-1)
+
+        iou_predict_truth = calc_iou(predict_boxes_tran, input_boxes)
         
+        # calculate I tesnsor [batch_size, 7, 7, 2]
+        object_mask = tf.reduce_max(iou_predict_truth, 3, keep_dims=True)   #每个cell两个框中选大的一个
+        object_mask = tf.cast((iou_predict_truth >= object_mask), tf.float32) * input_response
+        
+        # calculate no_I tensor [batch_size, 7, 7, 2]
+        noobject_mask = tf.ones_like(object_mask, dtype=tf.float32) - object_mask
+        
+        
+        # class_loss
+        class_delta = input_response * (predict_classes - input_classes)
+        class_loss = tf.reduce_mean(
+            tf.reduce_sum(tf.square(class_delta), axis=[1,2,3]),
+            name='class_loss') * 0.3
+        
+        # object_loss
+        object_delta = object_mask * (predict_scales - iou_predict_truth)
+        object_loss = tf.reduce_mean(
+            tf.reduce_sum(tf.square(object_delta), axis=[1,2,3]),
+            name='object_loss') * 0.2
+
+        # noobject_loss
+        noobject_delta = noobject_mask * predict_scales
+        noobject_loss = tf.reduce_mean(
+            tf.reduce_sum(tf.square(noobject_delta), axis=[1,2,3]),
+            name='noobject_loss') * 0.2
+
+        # coord_loss
+        boxes_tran = tf.stack(
+            [input_boxes[..., 0]*7 - anchor_offset,
+            input_boxes[..., 1]*7 - anchor_offset_tran,
+            tf.sqrt(input_boxes[..., 2]),
+            tf.sqrt(input_boxes[..., 3])], axis=-1)
+        coord_mask = tf.expand_dims(object_mask, 4)
+        boxes_delta = coord_mask * (predict_boxes - boxes_tran)
+        coord_loss = tf.reduce_mean(
+            tf.reduce_sum(tf.square(boxes_delta), axis=[1,2,3,4]),
+            name='coord_loss') * 0.3
+
+        tf.losses.add_loss(class_loss)
+        tf.losses.add_loss(object_loss)
+        tf.losses.add_loss(noobject_loss)
+        tf.losses.add_loss(coord_loss)
+
+        tf.summary.scalar('class_loss', class_loss)
+        tf.summary.scalar('object_loss', object_loss)
+        tf.summary.scalar('noobject_loss', noobject_loss)
+        tf.summary.scalar('coord_loss', coord_loss)
+
+
     
-
-
 # def get_layer_loss(predicts, batch_size, scope="net_loss"):
 
 #     with tf.name_scope(scope):

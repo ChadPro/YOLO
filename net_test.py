@@ -6,23 +6,32 @@ from __future__ import division
 import tensorflow as tf
 import numpy as np
 from nets import base_net
+from nets import yolo_net
+from preprocessing import yolo_preprocessing
+from datasets import pascalvoc_2012 
+
+image, shape, box, label = pascalvoc_2012.inputs("./pascal_voc21/", "", "Train", 16, None)
+bimage, bbox, blabel = yolo_preprocessing.preprocess_for_train(image, label, box, (448,448))
 
 yolo_base = base_net.YOLO_Base()
+yolo_obj = yolo_net.YOLO()
 
-label = tf.constant([[0.5, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.5, 0., 0., 0.]])
-label2 = tf.constant([[1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.]])
+# img = tf.ones([16,448,448,3])
+# boxes_input = tf.constant([[0.2, 0.2, 0.4, 0.4], [0.4,0.4,0.6,0.6]])
+# labels_input = tf.constant([11, 6], dtype=tf.int64)
 
-img = tf.ones([1,448,448,3])
+blabels, bboxes, bscores = yolo_obj.encode_boxes(bbox, blabel)
 
-net = yolo_base.base_net(img, 17)
+imagess, boxess, labelss, scoress = tf.train.shuffle_batch([bimage,bboxes,blabels,bscores], batch_size=3, num_threads=64, capacity=500, min_after_dequeue=3000)
 
-ss = tf.nn.softmax(net)
+# net = yolo_obj.yolo_net(img, 21)
+# output = yolo_obj.net_loss(net, None, 16)
 
-cross_entropy = tf.nn.softmax_cross_entropy_with_logits(labels=label2,logits=label2)
 
 with tf.Session() as sess:
     init_op = tf.global_variables_initializer()
     sess.run(init_op)
-    result, out = sess.run([ss, net])
-    print out
-    print result
+    out1, out2, out3, out4 = sess.run([imagess, boxess, labelss, scoress])
+    print out2
+    print out3
+    print out4

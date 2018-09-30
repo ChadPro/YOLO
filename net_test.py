@@ -11,7 +11,7 @@ from preprocessing import yolo_preprocessing
 from datasets import pascalvoc_2012 
 
 image, shape, box, label = pascalvoc_2012.inputs("../dataset/VOCdevkit/pascal_voc21/", "", "Train", 16, None)
-bimage, bbox, blabel = yolo_preprocessing.preprocess_for_train(image, label, box, (448,448))
+bimage, blabel, bbox = yolo_preprocessing.preprocess_for_train(image, label, box, (448,448))
 
 yolo_base = base_net.YOLO_Base()
 yolo_obj = yolo_net.YOLO()

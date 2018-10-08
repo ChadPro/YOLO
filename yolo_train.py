@@ -39,6 +39,7 @@ with tf.control_dependencies(update_ops):
 # 6. Save
 merged = tf.summary.merge_all()
 logwriter = tf.summary.FileWriter("./log_dir/yolo/", tf.get_default_graph())
+saver = tf.train.Saver()
 
 # 7. Loop
 with tf.Session() as sess:
@@ -56,6 +57,10 @@ with tf.Session() as sess:
         if i%30 == 0:
             logwriter.add_summary(summary_str, i)
             print loss_list
+
+        if i%500 == 0:
+            saver.save(sess, "./yolo_model/yolo_model.ckpt")
+
     logwriter.close()
     coord.request_stop()
     coord.join(threads)

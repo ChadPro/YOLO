@@ -135,3 +135,36 @@ def preprocess_for_train(image, labels, bboxes,
         if data_format == 'NCHW':
             image = tf.transpose(image, perm=(2, 0, 1))
         return image, labels, bboxes
+
+def preprocess_for_detect(image, labels, bboxes,
+                         out_shape, 
+                         color_space='rgb', image_whitened=False, color_distort=False,
+                         data_format='NHWC',
+                         scope='ssd_preprocessing_detect'):
+    with tf.name_scope(scope):
+        if image.get_shape().ndims != 3:
+            raise ValueError('Input must be of size [height, width, C>0]')
+
+        bbox_img = tf.constant([[0., 0., 1., 1.]])
+        image = tf_image.resize_image(image, out_shape,
+                                          method=tf.image.ResizeMethod.BILINEAR,
+                                          align_corners=False)
+        
+        return image
+
+def preprocess_for_val(image, labels, bboxes,
+                         out_shape, 
+                         color_space='rgb', image_whitened=False, color_distort=False,
+                         data_format='NHWC',
+                         scope='ssd_preprocessing_val'):
+    
+    with tf.name_scope(scope):
+        if image.get_shape().ndims != 3:
+            raise ValueError('Input must be of size [height, width, C>0]')
+
+        bbox_img = tf.constant([[0., 0., 1., 1.]])
+        image = tf_image.resize_image(image, out_shape,
+                                          method=tf.image.ResizeMethod.BILINEAR,
+                                          align_corners=False)
+        
+        return image

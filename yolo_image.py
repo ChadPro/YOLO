@@ -43,7 +43,7 @@ with tf.Session() as sess:
     predict_scales = r_reshape[:,:,:,29:]
 
     hehe = predict_boxes[0]
-    d_class, d_score, d_box = np_methods.yolo_bboxes_select(predict_classes[0],hehe,select_threshold=0.000001)
+    d_class, d_score, d_box = np_methods.yolo_bboxes_select(predict_classes[0],hehe,select_threshold=0.3)
     r_boxes = np_methods.bboxes_clip([0.,0.,1.,1.], d_box)
 
     d_class = np.reshape(d_class, (-1,))

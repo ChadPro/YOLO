@@ -36,7 +36,7 @@ with tf.Session() as sess:
     ssd_saver.restore(sess, './yolo_model/yolo_model.ckpt')
 
     r = sess.run(y, feed_dict={img_input : img})
-    r_reshape = np.reshape(r, [1,7,7,31])
+    r_reshape, r_image = np.reshape([r, img_pre], [1,7,7,31])
     predict_classes = r_reshape[:,:,:,:21]
     predict_boxes = r_reshape[:,:,:,21:29]
     predict_boxes = np.reshape(predict_boxes, [1,7,7,2,4])
@@ -53,10 +53,13 @@ with tf.Session() as sess:
     d_class, d_score, r_boxes = np_methods.bboxes_sort(d_class, d_score, r_boxes)
     d_class, d_score, r_boxes = np_methods.bboxes_nms(d_class, d_score, r_boxes)
 
-    print d_class.shape
-    print d_score.shape
-    print r_boxes.shape
+    max_index = np.argmax(d_score)
+    d_ymin = int(r_boxes[max_index][0] * 448)
+    d_xmin = int(r_boxes[max_index][1] * 448)
+    d_ymax = int(r_boxes[max_index][2] * 448)
+    d_xmax = int(r_boxes[max_index][3] * 448)
 
-# 4. 过滤
+    cv2.rectangle(r_image, (d_xmin, d_ymin), (d_xmax, d_ymax), (255,0,0), 2)
+    cv2.imwrite("./hehe.jpg", r_image)
 
 

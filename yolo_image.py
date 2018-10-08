@@ -26,11 +26,13 @@ y = yolo_obj.yolo_net(image_4d, 21)
 
 # 3. Read Image
 img = cv2.imread("./demo/person1.jpg")
-print img.shape
+ssd_saver = tf.train.Saver()
 
 with tf.Session() as sess:
     init_op = tf.global_variables_initializer()
     sess.run(init_op)
+
+    ssd_saver.restore(sess, './yolo_model/yolo_model.ckpt')
 
     r = sess.run(y, feed_dict={img_input : img})
     print r.shape

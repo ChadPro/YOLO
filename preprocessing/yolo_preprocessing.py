@@ -13,6 +13,16 @@ BBOX_CROP_OVERLAP = 0.5         # Minimum overlap to keep a bbox after cropping.
 MIN_OBJECT_COVERED = 0.25
 CROP_RATIO_RANGE = (0.6, 1.67)  # Distortion ratio during cropping.
 
+def tf_summary_image(image, bboxes, name='image', unwhitened=False):
+    """Add image with bounding boxes to summary.
+    """
+    # if unwhitened:
+    #     image = tf_image_unwhitened(image)
+    image = tf.expand_dims(image, 0)
+    bboxes = tf.expand_dims(bboxes, 0)
+    image_with_box = tf.image.draw_bounding_boxes(image, bboxes)
+    tf.summary.image(name, image_with_box)
+
 def distorted_bounding_box_crop(image,
                                 labels,
                                 bboxes,
@@ -88,7 +98,7 @@ def preprocess_for_train(image, labels, bboxes,
         # 1. rgb -> hsv
         if color_space == 'hsv':
             image = tf.image.rgb_to_hsv(image)
-        # tf_summary_image(image, bboxes, 'image_with_bboxes')
+        tf_summary_image(image, bboxes, 'image_with_bboxes')
 
         # # Remove DontCare labels.
         # labels, bboxes = ssd_common.tf_bboxes_filter_labels(out_label,
@@ -105,7 +115,7 @@ def preprocess_for_train(image, labels, bboxes,
         dst_image = tf_image.resize_image(dst_image, out_shape,
                                           method=tf.image.ResizeMethod.BILINEAR,
                                           align_corners=False)                               
-        # tf_summary_image(dst_image, bboxes, 'image_shape_distorted')
+        tf_summary_image(dst_image, bboxes, 'image_shape_distorted')
 
         # Randomly flip the image horizontally.
         # dst_image, bboxes = tf_image.random_flip_left_right(dst_image, bboxes)

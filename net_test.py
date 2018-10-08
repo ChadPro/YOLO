@@ -34,7 +34,7 @@ losses = tf.get_collection(tf.GraphKeys.LOSSES)
 total_loss = tf.add_n(losses)
 
 global_step = tf.Variable(0, trainable=False)
-learning_rate = tf.train.exponential_decay(0.01, global_step, 1000, 0.99)  
+learning_rate = tf.train.exponential_decay(0.0001, global_step, 1000, 0.99)  
     #train_step 梯度下降(学习率，损失函数，全局步数) + BN Layer Params update op
 update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
 

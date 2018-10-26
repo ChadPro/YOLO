@@ -79,10 +79,7 @@ def inputs(train_path, val_path, data_set,batch_size,num_epochs):
         read_file = val_path
 
     with tf.name_scope('tfrecord_input') as scope:
-        file_lists = [TRAIN_FILE % i for i in range(0,data_file_num)]
-        for j in range(data_file_num):
-            file_lists[j] = join(train_path, file_lists[j])
-
+        file_lists = [join(train_path, TRAIN_FILE) % i for i in range(0,data_file_num)]
         filename_queue = tf.train.string_input_producer(file_lists, num_epochs=num_epochs)
         image, shape, boxes, label = read_and_decode(filename_queue)
 

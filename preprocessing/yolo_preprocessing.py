@@ -62,7 +62,7 @@ def preprocess_for_train(image, labels, bboxes,
                          out_shape, 
                          color_space='rgb', image_whitened=False, color_distort=False,
                          data_format='NHWC',
-                         scope='ssd_preprocessing_train'):
+                         scope='yolo_preprocessing_train'):
     """Preprocesses the given image for training.
 
     Note that the actual resizing scale is sampled from
@@ -81,23 +81,13 @@ def preprocess_for_train(image, labels, bboxes,
         A preprocessed image.
     """
     fast_mode = False
-    with tf.name_scope(scope, 'ssd_preprocessing_train', [image, labels, bboxes]):
+    with tf.name_scope(scope, 'yolo_preprocessing_train', [image, labels, bboxes]):
         if image.get_shape().ndims != 3:
             raise ValueError('Input must be of size [height, width, C>0]')
 
-        # bgr -> rgb
-        # image = tf.reshape(image, [544,960,3])
-        # image = tf.reshape(image, [1080,1920,3])
-        # channels = tf.unstack(image, axis=-1)
-        # image = tf.stack([channels[2], channels[1], channels[0]], axis=-1)
-
         # 0. Convert to float scaled [0, 1].
         if image.dtype != tf.float32:
-            image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-        
-        # 1. rgb -> hsv
-        if color_space == 'hsv':
-            image = tf.image.rgb_to_hsv(image)
+            image = tf.image.convert_image_dtype(image, dtype=tf.float32)      
         tf_summary_image(image, bboxes, 'image_with_bboxes')
 
         # # Remove DontCare labels.

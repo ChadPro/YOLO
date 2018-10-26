@@ -94,7 +94,7 @@ def preprocess_for_train(image, labels, bboxes,
         # labels, bboxes = ssd_common.tf_bboxes_filter_labels(out_label,
         #                                                     labels,
         #                                                     bboxes)
-
+#
         # 2. Distort image and bounding boxes.
         dst_image = image
         dst_image, labels, bboxes, distort_bbox = \

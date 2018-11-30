@@ -1,5 +1,17 @@
 # -- coding: utf-8 --
 # Copyright 2018 The LongYan. All Rights Reserved.
+###################################################
+# ----------------------------------------------- #
+# |       Input Script For Tfrecords            | #
+# | Read data from tfrecord files and decode    | #
+# | Details:                                    | #
+# |   Def inputs() back image,shape,boxes,label | #
+# | image = decode_jpg        (height,width,3)  | #
+# | shape = shape                 (3,)          | #
+# | boxes = [ymin, xmin, ymax, xmax]    (num,4) | #
+# | label = label     (num,)                    | #
+# ----------------------------------------------- #
+###################################################
 from __future__ import absolute_import
 from __future__ import division
 
@@ -13,10 +25,7 @@ import cv2
 from tensorflow.python.ops import image_ops
 from tensorflow.python.ops import array_ops
 
-# Image 
-IMG_SIZE = 448
-IMG_CHANNELS = 3
-
+# Tfrecords name
 TRAIN_FILE = "voc_2012_train_%03d.tfrecord"
 
 def decode_image(image_buffer):
@@ -67,16 +76,17 @@ def read_and_decode(filename_queue):
 
     return image, shape, boxes, label.values
 
-def inputs(train_path, val_path, data_set,batch_size,num_epochs):
+def inputs(train_path, val_path, data_set, batch_size,num_epochs):
     data_file_num = 0
     if not num_epochs:
         num_epochs = None
     if data_set == 'Train':
         read_file = train_path
-        for (root, dirs, files) in walk(read_file):
-            data_file_num = len(files)
     else:
         read_file = val_path
+
+    for (root, dirs, files) in walk(read_file):
+        data_file_num = len(files)
 
     with tf.name_scope('tfrecord_input') as scope:
         file_lists = [join(train_path, TRAIN_FILE) % i for i in range(0,data_file_num)]

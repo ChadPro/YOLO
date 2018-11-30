@@ -15,6 +15,7 @@ DEFAULT_OUTPUT_NODE = 1000
 BN_DECAY = 0.9
 ACTIVATION = tf.nn.relu
 
+
 class YOLO(object):
 
     def __init__(self):
@@ -33,72 +34,115 @@ class YOLO(object):
         y = y.astype(dtype) / anchor_size
         x = x.astype(dtype) / anchor_size
         
-
     
     def encode_boxes(self, boxes, labels, anchor_size=7, dtype=np.float32):
         y, x = np.mgrid[0:anchor_size, 0:anchor_size]
-        ymin = y.astype(dtype) / anchor_size
-        xmin = x.astype(dtype) / anchor_size
-        ymax = (y.astype(dtype) + 1.) / anchor_size
-        xmax = (x.astype(dtype) + 1.) / anchor_size
+        ymin = y.astype(dtype) / anchor_size    # 7*7   0.~0.8571   y方向
+        xmin = x.astype(dtype) / anchor_size    # 7*7   0.~0.8571   x方向
+        ymax = (y.astype(dtype) + 1.) / anchor_size # 7*7  0.1429~1.    y方向     
+        xmax = (x.astype(dtype) + 1.) / anchor_size # 7*7  0.1429~1.    x方向
 
-        ymin = tf.expand_dims(ymin, -1)
+        ymin = tf.expand_dims(ymin, -1) # 7*7*1
         xmin = tf.expand_dims(xmin, -1)
         ymax = tf.expand_dims(ymax, -1)
         xmax = tf.expand_dims(xmax, -1)
 
+        # (7,7,1)       (7,7,1,4)       (7,7,1)
         feat_labels, feat_localizations, feat_scores = yolo_common.tf_yolo_bboxes_encode_layer(labels, boxes, [ymin, xmin, ymax, xmax], 21)
-
+        
+        """ Encode Boxes Log
+        print "############### Encode Boxes Log ###############"
+        print "feat_labels.shape : "
+        print feat_labels.shape
+        print "feat_loc.shape : "
+        print feat_localizations.shape
+        print "feat_scores.shape : "
+        print feat_scores.shape
+        """
         return feat_labels, feat_localizations, feat_scores
 
-
+"""
+    Yolo Net Create
+"""
 def get_yolo_net(inputs, num_classes, is_training=True):
     conv_num = 1
 
+    weights = []
     net, w1, b1 = conv_block(inputs, [7,7,3,64], [1,2,2,1], "conv"+str(conv_num), is_training=is_training)
     net = max_pool_block(net, [1,2,2,1], [1,2,2,1], "max_pool1", is_training=is_training)
     conv_num = conv_num + 1
+    weights.append(w1)
+    weights.append(b1)
 
     net, w2, b2 = conv_block(net, [3,3,64,192], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
     net = max_pool_block(net, [1,2,2,1], [1,2,2,1], "max_pool2", is_training=is_training)
     conv_num = conv_num + 1
+    weights.append(w2)
+    weights.append(b2)
 
     net, w3, b3 = conv_block(net, [1,1,192,128], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
     conv_num = conv_num + 1
+    weights.append(w3)
+    weights.append(b3)
     net, w4, b4 = conv_block(net, [3,3,128,256], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
     conv_num = conv_num + 1
+    weights.append(w4)
+    weights.append(b4)
     net, w5, b5 = conv_block(net, [1,1,256,256], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
     conv_num = conv_num + 1
+    weights.append(w5)
+    weights.append(b5)
     net, w6, b6 = conv_block(net, [3,3,256,512], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
     conv_num = conv_num + 1
+    weights.append(w6)
+    weights.append(b6)
     net = max_pool_block(net, [1,2,2,1], [1,2,2,1], "max_pool3", is_training=is_training)
 
     for i in range(4):
         net, w_1, b_1 = conv_block(net, [1,1,512,256], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+        weights.append(w_1)
+        weights.append(b_1)
         conv_num = conv_num + 1
         net, w_2, b_2 = conv_block(net, [3,3,256,512], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+        weights.append(w_2)
+        weights.append(b_2)
         conv_num = conv_num + 1
     net, w15, b15 = conv_block(net, [1,1,512,512], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+    weights.append(w15)
+    weights.append(b15)
     conv_num = conv_num + 1
     net, w16, b16 = conv_block(net, [3,3,512,1024], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+    weights.append(w16)
+    weights.append(b16)
     conv_num = conv_num + 1
     net = max_pool_block(net, [1,2,2,1], [1,2,2,1], "max_pool4", is_training=is_training)
 
     for i in range(2):
         net, w_1, b_1 = conv_block(net, [1,1,1024,512], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+        weights.append(w_1)
+        weights.append(b_1)
         conv_num = conv_num + 1
         net, w_2, b_2 = conv_block(net, [3,3,512,1024], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+        weights.append(w_2)
+        weights.append(b_2)
         conv_num = conv_num + 1
     net, w21, b21 = conv_block(net, [3,3,1024,1024], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+    weights.append(w21)
+    weights.append(b21)
     conv_num = conv_num + 1
     net, w22, b22 = conv_block(net, [3,3,1024,1024], [1,2,2,1], "conv"+str(conv_num), is_training=is_training)
-    
+    weights.append(w22)
+    weights.append(b22)
+
     net = flatten(net)
     fc1 = fc_block(net, 4096, 1, "fc_layer1", activation=ACTIVATION, is_training=is_training)
     output_layer = fc_block(fc1, 7*7*31, 2, "output_layer", is_training=is_training)
 
-    return output_layer
+    return output_layer, weights
 
+"""
+    IOU Calc (Jaccard index )
+"""
 def calc_iou(boxes1, boxes2, scope='iou'):
         """calculate ious
         Args:
@@ -124,32 +168,34 @@ def calc_iou(boxes1, boxes2, scope='iou'):
             # calculate the left up point & right down point
             lu = tf.maximum(boxes1_t[..., :2], boxes2_t[..., :2])
             rd = tf.minimum(boxes1_t[..., 2:], boxes2_t[..., 2:])
-
             # intersection
             intersection = tf.maximum(0.0, rd - lu)
             inter_square = intersection[..., 0] * intersection[..., 1]
-
             # calculate the boxs1 square and boxs2 square
             square1 = boxes1[..., 2] * boxes1[..., 3]
             square2 = boxes2[..., 2] * boxes2[..., 3]
-
             union_square = tf.maximum(square1 + square2 - inter_square, 1e-10)
-
         return tf.clip_by_value(inter_square / union_square, 0.0, 1.0)
 
+"""
+    Layer Loss
+"""
 def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"):
 
     with tf.name_scope(scope):
+        # predicts
         pre_reshaped = tf.reshape(predicts, [batch_size,7,7,31])
         predict_classes = pre_reshaped[:,:,:,:21]
         predict_boxes = pre_reshaped[:,:,:,21:29]
         predict_boxes = tf.reshape(predict_boxes, [batch_size,7,7,2,4])
         predict_scales = pre_reshaped[:,:,:,29:]
 
-        input_classes = tf.reshape(tf.one_hot(labels,21,axis=3), (batch_size,7,7,21))
-        input_boxes = tf.tile(boxes, [1,1,1,2,1])
-        input_response = scores
+        # labels
+        input_classes = tf.reshape(tf.one_hot(labels,21,axis=3), (batch_size,7,7,21))   # (batch,7,7,21)
+        input_boxes = tf.tile(boxes, [1,1,1,2,1])               # (batch,7,7,2,4)
+        input_response = scores                                 # (batch,7,7,1)
 
+        # offset for predicts
         anchor_offset = np.transpose(np.reshape(np.array([np.arange(7)]*7*2), (2,7,7)), (1,2,0))
         anchor_offset = tf.reshape(tf.constant(anchor_offset, dtype=tf.float32), [1,7,7,2])
         anchor_offset = tf.tile(anchor_offset, [batch_size, 1,1,1])
@@ -161,45 +207,49 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
             tf.square(predict_boxes[...,2]),
             tf.square(predict_boxes[...,3])], axis=-1)
 
-        iou_predict_truth = calc_iou(predict_boxes_tran, input_boxes)
+        # iou (predict, input_boxes)
+        iou_predict_truth = calc_iou(predict_boxes_tran, input_boxes)   # (8,7,7,2)
         
         # calculate I tesnsor [batch_size, 7, 7, 2]
-        object_mask = tf.reduce_max(iou_predict_truth, 3, keep_dims=True)   #每个cell两个框中选大的一个
-        object_mask = tf.cast((iou_predict_truth >= object_mask), tf.float32) * input_response
+        object_mask = tf.reduce_max(iou_predict_truth, 3, keep_dims=True)   #每个cell两个框中选大的一个 [batch,7,7,1]
+        object_mask = tf.cast((iou_predict_truth >= object_mask), tf.float32) * input_response  # [batch,7,7,2]
         
         # calculate no_I tensor [batch_size, 7, 7, 2]
         noobject_mask = tf.ones_like(object_mask, dtype=tf.float32) - object_mask
-        
-        
+          
         # class_loss
-        class_delta = input_response * (predict_classes - input_classes)
-        class_loss = tf.reduce_mean(
-            tf.reduce_sum(tf.square(class_delta), axis=[1,2,3]),
-            name='class_loss') * 2.0
+        with tf.name_scope("class_loss"):
+            class_delta = input_response * (predict_classes - input_classes)
+            class_loss = tf.reduce_mean(
+                tf.reduce_sum(tf.square(class_delta), axis=[1,2,3]),
+                name='class_loss') * 1.0
         
         # object_loss
-        object_delta = object_mask * (predict_scales - iou_predict_truth)
-        object_loss = tf.reduce_mean(
-            tf.reduce_sum(tf.square(object_delta), axis=[1,2,3]),
-            name='object_loss') * 1.0
+        with tf.name_scope("object_loss"):
+            object_delta = object_mask * (predict_scales - iou_predict_truth)
+            object_loss = tf.reduce_mean(
+                tf.reduce_sum(tf.square(object_delta), axis=[1,2,3]),
+                name='object_loss') * 1.0
 
         # noobject_loss
-        noobject_delta = noobject_mask * predict_scales
-        noobject_loss = tf.reduce_mean(
-            tf.reduce_sum(tf.square(noobject_delta), axis=[1,2,3]),
-            name='noobject_loss') * 1.0
+        with tf.name_scope("noobject_loss"):
+            noobject_delta = noobject_mask * predict_scales
+            noobject_loss = tf.reduce_mean(
+                tf.reduce_sum(tf.square(noobject_delta), axis=[1,2,3]),
+                name='noobject_loss') * 0.5
 
         # coord_loss
-        boxes_tran = tf.stack(
-            [input_boxes[..., 0]*7 - anchor_offset,
-            input_boxes[..., 1]*7 - anchor_offset_tran,
-            tf.sqrt(input_boxes[..., 2]),
-            tf.sqrt(input_boxes[..., 3])], axis=-1)
-        coord_mask = tf.expand_dims(object_mask, 4)
-        boxes_delta = coord_mask * (predict_boxes - boxes_tran)
-        coord_loss = tf.reduce_mean(
-            tf.reduce_sum(tf.square(boxes_delta), axis=[1,2,3,4]),
-            name='coord_loss') * 5.0
+        with tf.name_scope("coord_loss"):
+            boxes_tran = tf.stack(
+                [input_boxes[..., 0]*7 - anchor_offset,
+                input_boxes[..., 1]*7 - anchor_offset_tran,
+                tf.sqrt(input_boxes[..., 2]),
+                tf.sqrt(input_boxes[..., 3])], axis=-1)
+            coord_mask = tf.expand_dims(object_mask, 4)
+            boxes_delta = coord_mask * (predict_boxes - boxes_tran)
+            coord_loss = tf.reduce_mean(
+                tf.reduce_sum(tf.square(boxes_delta), axis=[1,2,3,4]),
+                name='coord_loss') * 5.0
 
         tf.losses.add_loss(class_loss)
         tf.losses.add_loss(object_loss)
@@ -212,17 +262,9 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
         tf.summary.scalar('coord_loss', coord_loss)
 
 
-    
-# def get_layer_loss(predicts, batch_size, scope="net_loss"):
-
-#     with tf.name_scope(scope):
-#         predict_classes = tf.reshape(predicts[:, :7*7*21], [batch_size, 7, 7, 21])
-#         predict_score = tf.reshape(predicts[:, 7*7*21:7*7*23], [batch_size, 7, 7, 2])
-#         predict_boxes = tf.reshape(predicts[:, 7*7*23:], [batch_size, 7, 7, 2, 4])
-
-#         reshaped = tf.reshape(predicts, [batch_size,7,7,31])
-#     return reshaped
-
+"""
+    Layer Construct Func
+"""
 def fc_block(inputs, num_out, id, scope_name, activation=None, is_training=True):
     num_in = inputs.get_shape().as_list()[-1]
     with tf.name_scope(scope_name):
@@ -232,7 +274,6 @@ def fc_block(inputs, num_out, id, scope_name, activation=None, is_training=True)
         if activation:
             fc = activation(fc)
     return fc
-
 
 def avg_pool_block(inputs, p_size, strides, scope_name, is_training=True):
     with tf.name_scope(scope_name):

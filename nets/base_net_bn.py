@@ -6,8 +6,6 @@ from __future__ import division
 import tensorflow as tf
 import numpy as np
 
-IMAGE_SIZE = 448
-NUM_CHANNELS = 3
 STDDEV = 0.01
 VGG_MEAN = [122.173, 116.150, 103.504]  # bgr
 DEFAULT_OUTPUT_NODE = 1000
@@ -78,9 +76,7 @@ def yolo_base_net(inputs, num_classes, is_training=True):
         fc1_biase = tf.get_variable('fc_b1', [num_classes], initializer=tf.constant_initializer(0.0))
         fc1 = tf.matmul(reshaped, fc1_weights) + fc1_biase
 
-
     return fc1
-
 
 
 def avg_pool_block(inputs, p_size, strides, scope_name, is_training=True):

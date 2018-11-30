@@ -15,7 +15,7 @@ def tf_yolo_bboxes_encode_layer(labels,
                                ignore_threshold=0.5,
                                prior_scaling=[0.1, 0.1, 0.2, 0.2],
                                dtype=tf.float32):
-    """Encode groundtruth labels and bounding boxes using SSD anchors from
+    """Encode groundtruth labels and bounding boxes using yolo anchors from
     one layer.
 
     Arguments:
@@ -29,11 +29,11 @@ def tf_yolo_bboxes_encode_layer(labels,
       (target_labels, target_localizations, target_scores): Target Tensors.
     """
     # Anchors coordinates and volume.
-    ymin, xmin, ymax, xmax = anchors_layer
-    vol_anchors = (xmax - xmin) * (ymax - ymin)
+    ymin, xmin, ymax, xmax = anchors_layer  # 7*7*1
+    vol_anchors = (xmax - xmin) * (ymax - ymin) # (1./7.)^2 = 0.02040816
 
-    # Initialize tensors...
-    shape = (7, 7, 1)
+    # Initialize tensors... (7,7,1)
+    shape = (7, 7, 1) 
     feat_labels = tf.zeros(shape, dtype=tf.int64)
     feat_scores = tf.zeros(shape, dtype=dtype)
 
@@ -42,6 +42,7 @@ def tf_yolo_bboxes_encode_layer(labels,
     feat_ymax = tf.ones(shape, dtype=dtype)
     feat_xmax = tf.ones(shape, dtype=dtype)
 
+    # Intersection over Union
     def jaccard_with_anchors(bbox):
         """Compute jaccard score between a box and the anchors.
         """
@@ -58,6 +59,7 @@ def tf_yolo_bboxes_encode_layer(labels,
         jaccard = tf.div(inter_vol, union_vol)
         return jaccard
 
+    # Intersection over Anchors
     def intersection_with_anchors(bbox):
         """Compute intersection between score a box and the anchors.
         """
@@ -117,8 +119,8 @@ def tf_yolo_bboxes_encode_layer(labels,
     # Main loop definition.
     i = 0
     [i, feat_labels, feat_scores,
-     feat_ymin, feat_xmin,
-     feat_ymax, feat_xmax] = tf.while_loop(condition, body,
+    feat_ymin, feat_xmin,
+    feat_ymax, feat_xmax] = tf.while_loop(condition, body,
                                            [i, feat_labels, feat_scores,
                                             feat_ymin, feat_xmin,
                                             feat_ymax, feat_xmax])
@@ -127,13 +129,22 @@ def tf_yolo_bboxes_encode_layer(labels,
     feat_cx = (feat_xmax + feat_xmin) / 2.
     feat_h = feat_ymax - feat_ymin
     feat_w = feat_xmax - feat_xmin
+
+    # Transfor LeftUp / size
+    # feat_cy = feat_ymin
+    # feat_cx = feat_xmin
+    # feat_h = feat_ymax - feat_ymin
+    # feat_w = feat_xmax - feat_xmin
+
     # # Encode features.
     # feat_cy = (feat_cy - yref) / href / prior_scaling[0]
     # feat_cx = (feat_cx - xref) / wref / prior_scaling[1]
     # feat_h = tf.log(feat_h / href) / prior_scaling[2]
     # feat_w = tf.log(feat_w / wref) / prior_scaling[3]
 
-    # Use SSD ordering: x / y / w / h instead of ours.
+    # Use YOLO ordering: x / y / w / h instead of ours.
     feat_localizations = tf.stack([feat_cx, feat_cy, feat_w, feat_h], axis=-1)
+    
+    #          (7,7,1)       (7,7,1,4)       (7,7,1)
     return feat_labels, feat_localizations, feat_scores
 

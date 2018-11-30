@@ -23,43 +23,49 @@ yolo_obj = yolo_net.YOLO()
 img_input = tf.placeholder(tf.uint8, shape=(None, None, 3))
 img_pre = yolo_preprocessing.preprocess_for_detect(img_input, None, None, [448,448])
 image_4d = tf.expand_dims(img_pre, 0)
-y = yolo_obj.yolo_net(image_4d, 21)
+y, weights = yolo_obj.yolo_net(image_4d, 21)
 
 # 3. Read Image
-img = cv2.imread("./demo/person1.jpg")
+img = cv2.imread(FLAGS.image_path)
 ssd_saver = tf.train.Saver()
 
+# 4. Tf Session()
 with tf.Session() as sess:
     init_op = tf.global_variables_initializer()
     sess.run(init_op)
-
     ssd_saver.restore(sess, './yolo_model/yolo_model.ckpt')
 
-    r = sess.run(y, feed_dict={img_input : img})
-    r_reshape, r_image = np.reshape([r, img_pre], [1,7,7,31])
-    predict_classes = r_reshape[:,:,:,:21]
-    predict_boxes = r_reshape[:,:,:,21:29]
+    r, r_image = sess.run([y, img_pre], feed_dict={img_input : img})
+
+    r_reshape = np.reshape(r, [1,7,7,31])
+    predict_classes = r_reshape[:,:,:,:21]  # (1,7,7,21)
+    predict_boxes = r_reshape[:,:,:,21:29]  # (1,7,7,8)
     predict_boxes = np.reshape(predict_boxes, [1,7,7,2,4])
-    predict_scales = r_reshape[:,:,:,29:]
+    predict_scales = r_reshape[:,:,:,29:]   # (1,7,7,2)
 
-    hehe = predict_boxes[0]
-    d_class, d_score, d_box = np_methods.yolo_bboxes_select(predict_classes[0],hehe,select_threshold=0.3)
-    r_boxes = np_methods.bboxes_clip([0.,0.,1.,1.], d_box)
+    predict_classes = np.argmax(predict_classes, axis=3)
+    print predict_classes
 
-    d_class = np.reshape(d_class, (-1,))
-    d_score = np.reshape(d_score, (-1))
-    r_boxes = np.reshape(r_boxes, (-1,4))
+    # hehe = predict_boxes[0]
+    # d_class, d_score, d_box = np_methods.yolo_bboxes_select(predict_classes[0],hehe,select_threshold=0.3)
+    # r_boxes = np_methods.bboxes_clip([0.,0.,1.,1.], d_box)
 
-    d_class, d_score, r_boxes = np_methods.bboxes_sort(d_class, d_score, r_boxes)
-    d_class, d_score, r_boxes = np_methods.bboxes_nms(d_class, d_score, r_boxes)
+    # d_class = np.reshape(d_class, (-1,))
+    # d_score = np.reshape(d_score, (-1))
+    # r_boxes = np.reshape(r_boxes, (-1,4))
 
-    max_index = np.argmax(d_score)
-    d_ymin = int(r_boxes[max_index][0] * 448)
-    d_xmin = int(r_boxes[max_index][1] * 448)
-    d_ymax = int(r_boxes[max_index][2] * 448)
-    d_xmax = int(r_boxes[max_index][3] * 448)
+    # d_class, d_score, r_boxes = np_methods.bboxes_sort(d_class, d_score, r_boxes)
+    # d_class, d_score, r_boxes = np_methods.bboxes_nms(d_class, d_score, r_boxes)
 
-    cv2.rectangle(r_image, (d_xmin, d_ymin), (d_xmax, d_ymax), (255,0,0), 2)
-    cv2.imwrite("./hehe.jpg", r_image)
+    # max_index = np.argmax(d_score)
+    # d_ymin = int(r_boxes[max_index][0] * 448)
+    # d_xmin = int(r_boxes[max_index][1] * 448)
+    # d_ymax = int(r_boxes[max_index][2] * 448)
+    # d_xmax = int(r_boxes[max_index][3] * 448)
+
+    # print "detect cls = " + str(d_class[max_index])
+
+    # cv2.rectangle(r_image, (d_xmin, d_ymin), (d_xmax, d_ymax), (255,0,0), 2)
+    # cv2.imwrite("./hehe.jpg", r_image)
 
 

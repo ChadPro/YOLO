@@ -11,7 +11,6 @@ NUM_CHANNELS = 3
 STDDEV = 0.01
 VGG_MEAN = [122.173, 116.150, 103.504]  # bgr
 DEFAULT_OUTPUT_NODE = 1000
-BN_DECAY = 0.9
 ACTIVATION = tf.nn.relu
 
 class YOLO_Base(object):

@@ -9,13 +9,12 @@ from nets import yolo_net   # Create Yolo Net
 from datasets import pascalvoc_2012     # Read Data
 from preprocessing import yolo_preprocessing    # Data Aug
 
-
 ####################
 #   Learn param    #
 ####################
-tf.app.flags.DEFINE_float('learning_rate_base', 0.01, 'Initial learning rate.')
+tf.app.flags.DEFINE_float('learning_rate_base', 0.0001, 'Initial learning rate.')
 tf.app.flags.DEFINE_float('learning_rate_decay', 0.99, 'Decay learning rate.')
-tf.app.flags.DEFINE_integer('learning_decay_step', 500, 'Learning rate decay step.')
+tf.app.flags.DEFINE_integer('learning_decay_step', 2000, 'Learning rate decay step.')
 tf.app.flags.DEFINE_string('train_data_path', '', 'Dataset for train.')
 tf.app.flags.DEFINE_bool('fine_tune', False, 'If fine tune.')
 tf.app.flags.DEFINE_string('model_store_path', './yolo_model/yolo_model.ckpt', '')
@@ -29,7 +28,10 @@ yolo_obj = yolo_net.YOLO()
 '''
     2. Get Dataset and Preprocess + Shuffle Batch
 '''
-# read tfrecord data
+# ######## read tfrecord data ##########
+# image数据是0~255
+# shape和box是回归到0~1的
+# label是no one_hot的
 image, shape, box, label = pascalvoc_2012.inputs(FLAGS.train_data_path, "", "Train", 1, None)
 # preprocess data aug
 bimage, blabel, bbox = yolo_preprocessing.preprocess_for_train(image, label, box, (448,448), image_whitened=False, color_distort=True)
@@ -48,14 +50,15 @@ yolo_obj.net_loss(y, labelss, boxess, scoress, 8)
 losses = tf.get_collection(tf.GraphKeys.LOSSES)
 total_loss = tf.add_n(losses)
 default_graph = tf.get_default_graph()
-cls_loss = default_graph.get_tensor_by_name("net_loss/class_loss/mul_1:0")
+cls_loss = default_graph.get_tensor_by_name("net_loss/class_loss/mul:0")
 obj_loss = default_graph.get_tensor_by_name("net_loss/object_loss/mul_1:0")
 noobj_loss = default_graph.get_tensor_by_name("net_loss/noobject_loss/mul_1:0")
-cor_loss = default_graph.get_tensor_by_name("net_loss/coord_loss/mul_3:0")
+cor_loss = default_graph.get_tensor_by_name("net_loss/coord_loss/mul_1:0")
 tf.summary.scalar('class_loss', cls_loss)
 tf.summary.scalar('object_loss', obj_loss)
 tf.summary.scalar('noobject_loss', noobj_loss)
 tf.summary.scalar('coord_loss', cor_loss)
+
 '''
     5. Train Step
     train_step 梯度下降(学习率，损失函数，全局步数) + BN Layer Params update op

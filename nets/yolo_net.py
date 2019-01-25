@@ -14,7 +14,7 @@ VGG_MEAN = [122.173, 116.150, 103.504]  # bgr
 DEFAULT_OUTPUT_NODE = 1000
 BN_DECAY = 0.9
 ACTIVATION = tf.nn.relu
-
+ALPHA = 0.1
 
 class YOLO(object):
 
@@ -130,14 +130,23 @@ def get_yolo_net(inputs, num_classes, is_training=True):
     weights.append(w21)
     weights.append(b21)
     conv_num = conv_num + 1
-    net, w22, b22 = conv_block(net, [3,3,1024,1024], [1,2,2,1], "conv"+str(conv_num), is_training=is_training)
+    net, w22, b22 = conv_block(net, [3,3,1024,1024], [1,2,2,1], "conv"+str(conv_num), is_training=is_training)  
     weights.append(w22)
     weights.append(b22)
+    conv_num = conv_num + 1
+
+    net, w23, b23 = conv_block(net, [3,3,1024,1024], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+    conv_num = conv_num + 1
+
+    net, w24, b24 = conv_block(net, [3,3,1024,1024], [1,1,1,1], "conv"+str(conv_num), is_training=is_training)
+    conv_num = conv_num + 1
 
     net = flatten(net)
-    fc1 = fc_block(net, 4096, 1, "fc_layer1", activation=ACTIVATION, is_training=is_training)
-    output_layer = fc_block(fc1, 7*7*31, 2, "output_layer", is_training=is_training)
+    fc1 = fc_block(net, 512, 1, "fc_layer1", activation=ACTIVATION, is_training=is_training)
+    fc2 = fc_block(fc1, 4096, 2, "fc_layer2", activation=ACTIVATION, is_training=is_training)
+    output_layer = fc_block(fc2, 7*7*31, 3, "output_layer", is_training=is_training)
 
+    # return fc2, weights
     return output_layer, weights
 
 """
@@ -196,16 +205,21 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
         input_response = scores                                 # (batch,7,7,1)
 
         # offset for predicts
-        anchor_offset = np.transpose(np.reshape(np.array([np.arange(7)]*7*2), (2,7,7)), (1,2,0))
+        anchor_offset = np.transpose(np.reshape(np.array([np.arange(7)]*7*2), (2,7,7)), (1,2,0))    #x-offset
         anchor_offset = tf.reshape(tf.constant(anchor_offset, dtype=tf.float32), [1,7,7,2])
         anchor_offset = tf.tile(anchor_offset, [batch_size, 1,1,1])
-        anchor_offset_tran = tf.transpose(anchor_offset, (0,2,1,3))
+        anchor_offset_tran = tf.transpose(anchor_offset, (0,2,1,3)) # y-offset
 
+        # predict_boxes_tran = tf.stack(
+        #     [(predict_boxes[..., 0] + anchor_offset) / 7,
+        #     (predict_boxes[..., 1] + anchor_offset_tran) / 7,
+        #     tf.square(predict_boxes[...,2]),
+        #     tf.square(predict_boxes[...,3])], axis=-1)
         predict_boxes_tran = tf.stack(
-            [(predict_boxes[..., 0] + anchor_offset) / 7,
-            (predict_boxes[..., 1] + anchor_offset_tran) / 7,
-            tf.square(predict_boxes[...,2]),
-            tf.square(predict_boxes[...,3])], axis=-1)
+            [predict_boxes[..., 0],
+            predict_boxes[..., 1],
+            predict_boxes[...,2],
+            predict_boxes[...,3]], axis=-1)
 
         # iou (predict, input_boxes)
         iou_predict_truth = calc_iou(predict_boxes_tran, input_boxes)   # (8,7,7,2)
@@ -217,9 +231,13 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
         # calculate no_I tensor [batch_size, 7, 7, 2]
         noobject_mask = tf.ones_like(object_mask, dtype=tf.float32) - object_mask
           
+        # tf.reduce_sum
+        # tf.reduce_mean
         # class_loss
         with tf.name_scope("class_loss"):
-            class_delta = input_response * (predict_classes - input_classes)
+            predict_classes = tf.nn.softmax(predict_classes, dim=3)
+            # class_delta = input_response * (predict_classes - input_classes)
+            class_delta = predict_classes - input_classes
             class_loss = tf.reduce_mean(
                 tf.reduce_sum(tf.square(class_delta), axis=[1,2,3]),
                 name='class_loss') * 1.0
@@ -240,16 +258,35 @@ def get_layer_loss(predicts, labels, boxes, scores, batch_size, scope="net_loss"
 
         # coord_loss
         with tf.name_scope("coord_loss"):
+            # boxes_tran = tf.stack(
+            #     [input_boxes[..., 0]*7 - anchor_offset,
+            #     input_boxes[..., 1]*7 - anchor_offset_tran,
+            #     tf.sqrt(input_boxes[..., 2]),
+            #     tf.sqrt(input_boxes[..., 3])], axis=-1)
+            
             boxes_tran = tf.stack(
-                [input_boxes[..., 0]*7 - anchor_offset,
-                input_boxes[..., 1]*7 - anchor_offset_tran,
+                [input_boxes[..., 0],
+                input_boxes[..., 1],
                 tf.sqrt(input_boxes[..., 2]),
-                tf.sqrt(input_boxes[..., 3])], axis=-1)
+                tf.sqrt(input_boxes[..., 3])], axis=-1)    
+
+            predict_boxes = tf.stack(
+                [predict_boxes[..., 0],
+                predict_boxes[..., 1],
+                tf.sqrt(tf.maximum(predict_boxes[..., 2],1e-10)),
+                tf.sqrt(tf.maximum(predict_boxes[..., 3],1e-10))], axis=-1)
+            
+            # predict_boxes = tf.stack(
+            #     [predict_boxes[..., 0],
+            #     predict_boxes[..., 1],
+            #     predict_boxes[..., 2],
+            #     predict_boxes[..., 3]], axis=-1)
+
             coord_mask = tf.expand_dims(object_mask, 4)
             boxes_delta = coord_mask * (predict_boxes - boxes_tran)
             coord_loss = tf.reduce_mean(
                 tf.reduce_sum(tf.square(boxes_delta), axis=[1,2,3,4]),
-                name='coord_loss') * 5.0
+                name='coord_loss') * 5.
 
         tf.losses.add_loss(class_loss)
         tf.losses.add_loss(object_loss)
@@ -272,7 +309,8 @@ def fc_block(inputs, num_out, id, scope_name, activation=None, is_training=True)
         b = tf.get_variable("fc_b"+str(id), [num_out], initializer=tf.constant_initializer(0.0))
         fc = tf.matmul(inputs,w) + b
         if activation:
-            fc = activation(fc)
+            # fc = activation(fc)
+            fc = tf.maximum(ALPHA*fc, fc, name="leaky_relu")
     return fc
 
 def avg_pool_block(inputs, p_size, strides, scope_name, is_training=True):
@@ -291,7 +329,8 @@ def conv_block(inputs, w_size, strides, scope_name, is_training=True):
         biases = tf.get_variable("biases", w_size[-1], initializer=tf.constant_initializer(0.0))
         layer = tf.nn.conv2d(inputs, weights, strides=strides, padding='SAME')
         bn = tf.contrib.layers.batch_norm(tf.nn.bias_add(layer, biases), decay=BN_DECAY, center=True, scale=True, is_training=is_training, scope='dw_bn')
-        output = ACTIVATION(bn)
+        # output = ACTIVATION(bn)
+        output = tf.maximum(ALPHA*bn, bn , name="leaky_relu")
     return output, weights, biases
 
 def flatten(x):

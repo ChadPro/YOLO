@@ -28,7 +28,7 @@ Resize = IntEnum('Resize', ('NONE',                # Nothing!
 
 # Some training pre-processing parameters.
 # BBOX_CROP_OVERLAP = 0.5         # Minimum overlap to keep a bbox after cropping.
-BBOX_CROP_OVERLAP = 0.5 
+BBOX_CROP_OVERLAP = 0.8
 # MIN_OBJECT_COVERED = 0.25
 MIN_OBJECT_COVERED = 0.7
 CROP_RATIO_RANGE = (0.6, 1.67)  # Distortion ratio during cropping.
